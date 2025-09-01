@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -13,23 +12,39 @@ type Config struct {
 	Username string `json:"current_user_name"`
 }
 
+const gatorPath = ".gatorconfig.json"
+
 func getConfigFilePath() (string, error) {
 	homePath, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 
-	file := filepath.Join(homePath, ".gatorconfig.json")
+	file := filepath.Join(homePath, gatorPath)
 
 	return file, nil
 
 }
 
 func Read() (Config, error) {
-	file, err := getConfigFilePath()
+	filePath, err := getConfigFilePath()
 
 	if err != nil {
-		return nil, err
+		return Config{}, err
+	}
+
+	file, err := os.Open(filePath)
+
+	if err != nil {
+		return Config{}, err
+	}
+
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+
+	if err != nil {
+		return Config{}, err
 	}
 
 	var config Config
@@ -40,6 +55,21 @@ func Read() (Config, error) {
 
 }
 
-func (c *Config) SetUser(username string) error {
+func write(cfg Config) error {
+	filePath, err := getConfigFilePath()
 
+	if err != nil {
+		return err
+	}
+
+	jsonData, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, jsonData, 0644)
+}
+
+func (c *Config) SetUser(username string) error {
+	c.Username = username
+	return write(*c)
 }
